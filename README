@@ -1,0 +1,395 @@
+# Concurrent HTTP Server in C
+
+A lightweight, multi-connection HTTP server built from scratch in C using process forking to handle multiple simultaneous client connections.
+
+![Language](https://img.shields.io/badge/language-C-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+
+---
+
+## 🎯 What This Is
+
+A learning-focused HTTP server that demonstrates:
+- **Socket Programming** - Low-level network communication
+- **Process Forking** - Handling multiple connections concurrently
+- **HTTP Protocol** - Basic request/response handling
+- **System Programming** - UNIX system calls and process management
+
+This server can handle multiple browser connections simultaneously by creating a separate child process for each incoming connection.
+
+---
+
+## 🏗️ Architecture
+
+```
+PARENT PROCESS (Main Server)
+├── Creates listening socket on port 8080
+├── Binds to address and listens
+└── Infinite accept loop:
+    ├── Connection 1 arrives → fork() → CHILD PROCESS 1
+    ├── Connection 2 arrives → fork() → CHILD PROCESS 2
+    ├── Connection 3 arrives → fork() → CHILD PROCESS 3
+    └── ... continues accepting connections
+```
+
+**Parent Process**: Accepts connections and forks child processes  
+**Child Processes**: Handle individual client requests independently  
+**Signal Handler**: Automatically cleans up terminated child processes
+
+---
+
+## ✨ Features
+
+- ✅ **Concurrent Connection Handling** - Multiple clients served simultaneously
+- ✅ **Process Forking** - Each connection handled in isolated process
+- ✅ **Automatic Zombie Cleanup** - Signal handler prevents zombie processes
+- ✅ **HTTP/1.1 Support** - Basic HTTP protocol implementation
+- ✅ **Error Handling** - Robust error checking throughout
+- ✅ **Logging** - Process IDs and connection info printed
+
+---
+
+## 📋 Requirements
+
+- **Operating System**: Linux or macOS (UNIX-based)
+- **Compiler**: GCC or Clang
+- **Libraries**: Standard C library (included by default)
+
+---
+
+## 🚀 Quick Start
+
+### Compile
+
+```bash
+gcc server.c -o server
+```
+
+### Run
+
+```bash
+./server
+```
+
+You should see:
+```
+Server listening on port 8080...
+```
+
+### Test
+
+**Option 1: Browser**
+1. Open your browser
+2. Navigate to `http://localhost:8080`
+3. Open multiple tabs - each shows different process ID
+4. All requests handled concurrently!
+
+**Option 2: curl (Command Line)**
+```bash
+# Open multiple terminals and run simultaneously:
+curl http://localhost:8080
+curl http://localhost:8080
+curl http://localhost:8080
+```
+
+**Option 3: Apache Bench**
+```bash
+# Send 10 requests, 5 concurrent
+ab -n 10 -c 5 http://localhost:8080/
+```
+
+### Stop
+
+Press `Ctrl+C` to terminate the server
+
+---
+
+## 📁 Project Structure
+
+```
+.
+├── server.c       # Main server implementation (195 lines)
+└── README.md      # This file
+```
+
+### Code Organization (server.c)
+
+| Lines    | Section                  | Purpose                              |
+|----------|--------------------------|--------------------------------------|
+| 1-8      | Headers                  | Include necessary libraries          |
+| 10-11    | Constants                | PORT and BUFFER_SIZE definitions     |
+| 13-21    | Signal Handler           | Zombie process cleanup               |
+| 24-79    | Setup Phase              | Socket creation, binding, listening  |
+| 81-83    | Signal Registration      | Register SIGCHLD handler             |
+| 85-188   | Main Server Loop         | Accept connections and fork children |
+| 90-106   | Accept Connection        | Wait for and accept clients          |
+| 108-187  | Fork Logic               | Parent/child process branching       |
+| 118-174  | Child Process Handler    | Read request, send response, exit    |
+| 176-187  | Parent Process Continues | Close client socket, loop back       |
+
+---
+
+## 🔧 How It Works
+
+### 1. Server Initialization
+
+```c
+// Create socket
+socket(AF_INET, SOCK_STREAM, 0)
+
+// Bind to port 8080
+bind(server_fd, &address, sizeof(address))
+
+// Start listening (queue up to 3 connections)
+listen(server_fd, 3)
+
+// Register signal handler for zombie cleanup
+signal(SIGCHLD, handle_sigchld)
+```
+
+### 2. Connection Handling Loop
+
+```c
+while (1) {
+    // Accept incoming connection
+    client_fd = accept(server_fd, ...);
+    
+    // Fork to handle concurrently
+    pid_t pid = fork();
+    
+    if (pid == 0) {
+        // CHILD: Handle this client
+        read_request();
+        send_response();
+        exit(0);
+    }
+    else {
+        // PARENT: Ready for next client
+        close(client_fd);
+        // Loop continues...
+    }
+}
+```
+
+### 3. Concurrent Execution
+
+- **Parent** immediately returns to `accept()` for next connection
+- **Children** independently handle their assigned clients
+- Multiple children can run simultaneously
+- Signal handler automatically cleans up finished children
+
+---
+
+## 📚 Key Concepts Demonstrated
+
+### Socket Programming
+- Creating network endpoints
+- Binding to addresses and ports
+- Listening for connections
+- Accepting client connections
+
+### Process Management
+- `fork()` - Creating child processes
+- Process isolation
+- Parent/child coordination
+- Zombie process prevention
+
+### HTTP Protocol
+- Parsing HTTP requests
+- Building HTTP responses
+- Status codes (200 OK)
+- Headers (Content-Type, Content-Length)
+
+### System Programming
+- File descriptors
+- Signal handling (SIGCHLD)
+- Non-blocking cleanup (WNOHANG)
+- Proper resource cleanup
+
+---
+
+## 🎓 Functions Reference
+
+| Function      | Purpose                              | Key Parameters                |
+|---------------|--------------------------------------|-------------------------------|
+| `socket()`    | Create network endpoint              | Domain, Type, Protocol        |
+| `bind()`      | Assign address to socket             | Socket, Address, Length       |
+| `listen()`    | Mark socket as passive               | Socket, Backlog               |
+| `accept()`    | Accept incoming connection           | Socket, Address, Length       |
+| `fork()`      | Create child process                 | None                          |
+| `read()`      | Read data from socket                | FD, Buffer, Count             |
+| `write()`     | Write data to socket                 | FD, Buffer, Count             |
+| `close()`     | Close file descriptor                | FD                            |
+| `exit()`      | Terminate process                    | Status Code                   |
+| `waitpid()`   | Wait for child process               | PID, Status, Options          |
+| `signal()`    | Register signal handler              | Signal, Handler               |
+
+---
+
+## 🧪 Testing Concurrency
+
+### Add Delay to Visualize Concurrency
+
+Modify the child process to add a 5-second delay:
+
+```c
+if (pid == 0) {  // Child process
+    close(server_fd);
+    
+    printf("[Child %d] Handling client...\n", getpid());
+    sleep(5);  // Add this line
+    
+    // ... rest of handler ...
+}
+```
+
+Now test with multiple curl commands:
+```bash
+# Run these in 3 separate terminals simultaneously
+curl http://localhost:8080  # Terminal 1
+curl http://localhost:8080  # Terminal 2  
+curl http://localhost:8080  # Terminal 3
+```
+
+**Result**: All 3 complete in ~5 seconds (concurrent)  
+**Without forking**: Would take ~15 seconds (sequential)
+
+---
+
+## 📊 Performance Characteristics
+
+| Metric                  | Value                           |
+|-------------------------|---------------------------------|
+| Connection Queue        | 3 pending connections (backlog) |
+| Concurrent Connections  | Limited by system resources     |
+| Process Creation        | ~1-2ms per fork()               |
+| Memory per Process      | ~2-5 MB                         |
+| Practical Limit         | 100-500 concurrent connections  |
+
+**Note**: For higher concurrency (1000+), consider using threads (`pthread`) or event-driven I/O (`epoll`).
+
+---
+
+## ⚠️ Important Notes
+
+### Security Warnings
+- **No authentication** - Anyone can connect
+- **No input validation** - Vulnerable to malformed requests
+- **No rate limiting** - Subject to DoS attacks
+- **For learning purposes only** - Not production-ready
+
+### Resource Management
+- Each fork creates a new process (memory overhead)
+- Zombie processes automatically cleaned up via signal handler
+- File descriptors properly closed in both parent and child
+- Child processes must call `exit(0)` to terminate
+
+### Port Binding
+- Default port: 8080
+- If port is in use, you'll get "Address already in use" error
+- Wait 30-60 seconds after stopping server before restarting
+- Or change PORT constant in code
+
+---
+
+## 🐛 Troubleshooting
+
+### "Address already in use"
+```bash
+# Check what's using port 8080
+lsof -i :8080
+
+# Kill the process
+kill -9 <PID>
+
+# Or wait 60 seconds for TIME_WAIT to expire
+```
+
+### "Permission denied"
+```bash
+# Ports below 1024 require root
+# Use port 8080 or higher (no sudo needed)
+```
+
+### Zombie processes accumulating
+- Make sure signal handler is registered
+- Verify child processes call `exit(0)`
+- Check with: `ps aux | grep defunct`
+
+### Compilation errors
+```bash
+# Make sure all headers are available
+# On Linux, install build essentials:
+sudo apt-get install build-essential
+
+# On macOS, install Xcode command line tools:
+xcode-select --install
+```
+
+---
+
+## 🔄 Next Steps / Enhancements
+
+Want to level up this server? Try implementing:
+
+- [ ] **File serving** - Serve HTML/CSS/JS files from disk
+- [ ] **Routing** - Handle different URLs (/home, /about, etc.)
+- [ ] **POST requests** - Parse request bodies
+- [ ] **Query parameters** - Parse URL query strings
+- [ ] **Logging** - Write requests to log file
+- [ ] **Threading** - Use `pthread` instead of fork
+- [ ] **Keep-Alive** - HTTP/1.1 persistent connections
+- [ ] **HTTPS** - Add SSL/TLS encryption
+- [ ] **CGI support** - Execute external scripts
+- [ ] **Event-driven I/O** - Use `epoll` for high concurrency
+
+---
+
+## 📖 Learning Resources
+
+- [Beej's Guide to Network Programming](https://beej.us/guide/bgnet/)
+- [The Linux Programming Interface](https://man7.org/tlpi/)
+- [HTTP/1.1 RFC 2616](https://www.rfc-editor.org/rfc/rfc2616)
+- [fork() man page](https://man7.org/linux/man-pages/man2/fork.2.html)
+- [socket() man page](https://man7.org/linux/man-pages/man2/socket.2.html)
+
+---
+
+## 🤝 Contributing
+
+This is a learning project! Feel free to:
+- Experiment with the code
+- Add new features
+- Improve error handling
+- Optimize performance
+- Share what you learned
+
+---
+
+## 📝 License
+
+MIT License - Feel free to use this code for learning and experimentation.
+
+---
+
+## 🎉 Acknowledgments
+
+Built as a learning exercise to understand:
+- Low-level socket programming
+- Process management in UNIX
+- HTTP protocol fundamentals
+- Concurrent server architecture
+
+**Key Takeaway**: You now understand the core concepts that power real web servers like Apache, Nginx, and Node.js!
+
+---
+
+## 📞 Questions?
+
+If you're learning from this code and have questions:
+1. Read through the comments in `server.c`
+2. Check the man pages: `man socket`, `man fork`, etc.
+3. Experiment! Change values and see what happens
+4. Use `printf()` debugging to trace execution flow
+
+Happy coding! 🚀
