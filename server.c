@@ -7,3 +7,7 @@
 #include <netinet/in.h> // Internet protocol family structures
 #include <sys/wait.h>   // For wait() function to handle child processes
 #include <signal.h>     // For signal handling (cleaning up zombies)
+
+
+define PORT 8080       // Define the port our server will listen on
+#define BUFFER_SIZE 1024 // Size of our read buffer
