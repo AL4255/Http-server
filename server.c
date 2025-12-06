@@ -21,3 +21,16 @@ void handle_sigchld(int sig) {
     // Loop to handle multiple children that might have died
     while (waitpid(-1, NULL, WNOHANG) > 0);
 }
+
+int main() {
+    printf("Starting HTTP Server on port %d...\n", PORT);
+
+    // Step 2: Create a socket
+    // A socket is like a phone - it's an endpoint for communication
+    int server_fd;  // File descriptor for our socket (like a handle/ID)
+
+    // socket() creates a new socket and returns its file descriptor
+    // Parameters: domain, type, protocol
+    server_fd = socket(AF_INET,      // AF_INET = IPv4 internet protocols
+                       SOCK_STREAM,  // SOCK_STREAM = TCP (reliable, connection-based)
+                       0);           // 0 = let system choose appropriate protocol (TCP for SOCK_STREAM)
