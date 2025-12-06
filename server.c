@@ -1,4 +1,4 @@
-
+ 
 #include <stdio.h>      // Standard input/output functions (printf, etc.)
 #include <stdlib.h>     // Standard library (exit, malloc, etc.)
 #include <string.h>     // String manipulation functions (strlen, strcpy, etc.)
